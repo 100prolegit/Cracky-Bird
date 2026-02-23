@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Flappy Bird Mobile</title>
+<style>
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #87CEEB;
+    font-family: Arial;
+    touch-action: none;
+}
+canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
+.menu {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.7);
+    color: white;
+}
+button {
+    padding: 15px 50px;
+    font-size: 24px;
+    margin-top: 20px;
+    border: none;
+    border-radius: 12px;
+    background: orange;
+    color: white;
+}
+#gameOverMenu { display: none; }
+</style>
+</head>
+<body>
+
+<div id="startMenu" class="menu">
+    <h1>🐦 Flappy Bird</h1>
+    <button onclick="startGame()">START</button>
+</div>
+
+<div id="gameOverMenu" class="menu">
+    <h1>GAME OVER</h1>
+    <button onclick="restartGame()">REPLAY</button>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+let gravity = 0.6;
+let lift = -10;
+let score;
+let gameRunning = false;
+
+const bird = {
+    x: canvas.width * 0.25,
+    y: canvas.height / 2,
+    size: 20,
+    velocity: 0
+};
+
+let pipes = [];
+
+function startGame() {
+    document.getElementById("startMenu").style.display = "none";
+    resetGame();
+    gameRunning = true;
+}
+
+function restartGame() {
+    document.getElementById("gameOverMenu").style.display = "none";
+    resetGame();
+    gameRunning = true;
+}
+
+function resetGame() {
+    score = 0;
+    pipes = [];
+    bird.y = canvas.height / 2;
+    bird.velocity = 0;
+}
+
+function endGame() {
+    gameRunning = false;
+    document.getElementById("gameOverMenu").style.display = "flex";
+}
+
+function spawnPipe() {
+    if (!gameRunning) return;
+    let gap = canvas.height * 0.22; // passt sich Bildschirm an
+    let topHeight = Math.random() * (canvas.height - gap - 150) + 50;
+    pipes.push({
+        x: canvas.width,
+        width: 70,
+        top: topHeight,
+        bottom: canvas.height - topHeight - gap,
+        passed: false
+    });
+}
+setInterval(spawnPipe, 1800);
+
+function flap() {
+    if (gameRunning) bird.velocity = lift;
+}
+document.addEventListener("touchstart", flap);
+document.addEventListener("mousedown", flap);
+
+function update() {
+    if (!gameRunning) return;
+
+    bird.velocity += gravity;
+    bird.y += bird.velocity;
+
+    if (bird.y + bird.size > canvas.height || bird.y - bird.size < 0) {
+        endGame();
+    }
+
+    pipes.forEach((pipe, index) => {
+        pipe.x -= 4;
+
+        if (
+            bird.x + bird.size > pipe.x &&
+            bird.x - bird.size < pipe.x + pipe.width &&
+            (bird.y - bird.size < pipe.top ||
+             bird.y + bird.size > canvas.height - pipe.bottom)
+        ) {
+            endGame();
+        }
+
+        if (!pipe.passed && pipe.x + pipe.width < bird.x) {
+            pipe.passed = true;
+            score++;
+        }
+
+        if (pipe.x + pipe.width < 0) {
+            pipes.splice(index, 1);
+        }
+    });
+}
+
+function drawBird() {
+    ctx.fillStyle = "blue";
+    ctx.beginPath();
+    ctx.arc(bird.x, bird.y, bird.size, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(bird.x + 6, bird.y - 5, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "black";
+    ctx.beginPath();
+    ctx.arc(bird.x + 8, bird.y - 5, 2, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawPipes(pipe) {
+    ctx.fillStyle = "#228B22";
+    ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
+
+    ctx.fillStyle = "#006400";
+    ctx.fillRect(pipe.x, canvas.height - pipe.bottom, pipe.width, pipe.bottom);
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pipes.forEach(drawPipes);
+    drawBird();
+
+    if (gameRunning) {
+        ctx.fillStyle = "white";
+        ctx.font = `${Math.round(canvas.height*0.04)}px Arial`;
+        ctx.fillText("Score: " + score, 20, canvas.height*0.06);
+    }
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
